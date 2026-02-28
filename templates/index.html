@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NIFTY 50 Web Analyzer</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>NIFTY 50 Web Analyzer</h1>
+      <p class="subtitle">Educational dashboard for entry/exit bias and strategy insights</p>
+
+      {% if error %}
+      <div class="error">Error loading data: {{ error }}</div>
+      {% elif data %}
+      <div class="grid">
+        <div class="card">
+          <h3>Market Snapshot</h3>
+          <ul>
+            <li>Close: <b>{{ "%.2f"|format(data.insights.close) }}</b></li>
+            <li>Intraday last: <b>{{ "%.2f"|format(data.intraday_last_price) }}</b></li>
+            <li>1Y return: <b>{{ "%.2f"|format(data.insights.yearly_return_pct) }}%</b></li>
+            <li>Drawdown from 1Y high: <b>{{ "%.2f"|format(data.insights.drawdown_from_1y_high_pct) }}%</b></li>
+            <li>Regime: <b>{{ data.insights.market_regime }}</b></li>
+            <li>Momentum: <b>{{ data.insights.momentum }}</b></li>
+            <li>20D annualized vol: <b>{{ "%.2f"|format(data.insights.annualized_volatility_pct) }}%</b></li>
+          </ul>
+        </div>
+
+        <div class="card">
+          <h3>Risk Zones</h3>
+          <ul>
+            <li>Support: <b>{{ "%.2f"|format(data.support_resistance.support) }}</b></li>
+            <li>Resistance: <b>{{ "%.2f"|format(data.support_resistance.resistance) }}</b></li>
+          </ul>
+
+          <h3>Backtest (1Y)</h3>
+          <ul>
+            <li>Market return: <b>{{ "%.2f"|format(data.backtest.market_return_pct) }}%</b></li>
+            <li>Strategy return: <b>{{ "%.2f"|format(data.backtest.strategy_return_pct) }}%</b></li>
+            <li>Strategy max DD: <b>{{ "%.2f"|format(data.backtest.strategy_max_drawdown_pct) }}%</b></li>
+            <li>Entries: <b>{{ data.backtest.entries }}</b></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="card full">
+        <h3>Strategy Suggestions</h3>
+        {% for s in data.signals %}
+        <div class="signal">
+          <h4>{{ s.strategy }} — {{ s.action }}</h4>
+          <p>Confidence: <b>{{ "%.0f"|format(s.confidence * 100) }}%</b> | Score: <b>{{ s.score }}</b></p>
+          <p>{{ s.reasoning }}</p>
+          {% if s.entry %}<p>Entry: <b>{{ "%.2f"|format(s.entry) }}</b></p>{% endif %}
+          {% if s.stop_loss %}<p>Stop loss: <b>{{ "%.2f"|format(s.stop_loss) }}</b></p>{% endif %}
+          {% if s.target %}<p>Target: <b>{{ "%.2f"|format(s.target) }}</b></p>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="card full">
+        <h3>1Y Price Trend</h3>
+        <div id="chart"></div>
+      </div>
+      {% endif %}
+    </div>
+
+    {% if data %}
+    <script>
+      const chartData = {{ data.chart | tojson }};
+      Plotly.newPlot('chart', [
+        { x: chartData.dates, y: chartData.close, mode: 'lines', name: 'Close' },
+        { x: chartData.dates, y: chartData.sma50, mode: 'lines', name: 'SMA50' },
+        { x: chartData.dates, y: chartData.sma200, mode: 'lines', name: 'SMA200' }
+      ], {
+        margin: { t: 10, r: 20, b: 40, l: 50 },
+        xaxis: { title: 'Date' },
+        yaxis: { title: 'Index Value' }
+      }, { responsive: true });
+    </script>
+    {% endif %}
+  </body>
+</html>
